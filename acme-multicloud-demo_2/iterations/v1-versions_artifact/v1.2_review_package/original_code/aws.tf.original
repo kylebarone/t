@@ -1,0 +1,236 @@
+# VPC
+resource "aws_vpc" "main" {
+  count                = var.enable_aws ? 1 : 0
+  cidr_block           = "10.2.0.0/16"
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "${var.project_name}-vpc-${var.environment}"
+  }
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "main" {
+  count  = var.enable_aws ? 1 : 0
+  vpc_id = aws_vpc.main[0].id
+
+  tags = {
+    Name = "${var.project_name}-igw"
+  }
+}
+
+# Subnets
+resource "aws_subnet" "private_1" {
+  count             = var.enable_aws ? 1 : 0
+  vpc_id            = aws_vpc.main[0].id
+  cidr_block        = "10.2.1.0/24"
+  availability_zone = "${var.aws_region}a"
+
+  tags = {
+    Name = "${var.project_name}-private-1"
+  }
+}
+
+resource "aws_subnet" "private_2" {
+  count             = var.enable_aws ? 1 : 0
+  vpc_id            = aws_vpc.main[0].id
+  cidr_block        = "10.2.2.0/24"
+  availability_zone = "${var.aws_region}b"
+
+  tags = {
+    Name = "${var.project_name}-private-2"
+  }
+}
+
+resource "aws_subnet" "public_1" {
+  count                   = var.enable_aws ? 1 : 0
+  vpc_id                  = aws_vpc.main[0].id
+  cidr_block              = "10.2.3.0/24"
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.project_name}-public-1"
+  }
+}
+
+resource "aws_subnet" "public_2" {
+  count                   = var.enable_aws ? 1 : 0
+  vpc_id                  = aws_vpc.main[0].id
+  cidr_block              = "10.2.4.0/24"
+  availability_zone       = "${var.aws_region}b"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.project_name}-public-2"
+  }
+}
+
+# EKS Cluster IAM Role
+resource "aws_iam_role" "eks_cluster" {
+  count = var.enable_aws ? 1 : 0
+  name  = "${var.project_name}-eks-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "eks.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  count      = var.enable_aws ? 1 : 0
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_cluster[0].name
+}
+
+# EKS Cluster
+resource "aws_eks_cluster" "main" {
+  count    = var.enable_aws ? 1 : 0
+  name     = "${var.project_name}-eks-${var.environment}"
+  role_arn = aws_iam_role.eks_cluster[0].arn
+
+  vpc_config {
+    subnet_ids = [
+      aws_subnet.private_1[0].id,
+      aws_subnet.private_2[0].id,
+      aws_subnet.public_1[0].id,
+      aws_subnet.public_2[0].id
+    ]
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy
+  ]
+}
+
+# EKS Node Group IAM Role
+resource "aws_iam_role" "eks_nodes" {
+  count = var.enable_aws ? 1 : 0
+  name  = "${var.project_name}-eks-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
+  count      = var.enable_aws ? 1 : 0
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.eks_nodes[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+  count      = var.enable_aws ? 1 : 0
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.eks_nodes[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
+  count      = var.enable_aws ? 1 : 0
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.eks_nodes[0].name
+}
+
+# EKS Node Group
+resource "aws_eks_node_group" "main" {
+  count           = var.enable_aws ? 1 : 0
+  cluster_name    = aws_eks_cluster.main[0].name
+  node_group_name = "${var.project_name}-node-group"
+  node_role_arn   = aws_iam_role.eks_nodes[0].arn
+  subnet_ids = [
+    aws_subnet.private_1[0].id,
+    aws_subnet.private_2[0].id
+  ]
+
+  scaling_config {
+    desired_size = 2
+    max_size     = 3
+    min_size     = 1
+  }
+
+  instance_types = ["t3.medium"]
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_worker_node_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.eks_container_registry_policy
+  ]
+}
+
+# RDS Subnet Group
+resource "aws_db_subnet_group" "main" {
+  count      = var.enable_aws ? 1 : 0
+  name       = "${var.project_name}-db-subnet-group"
+  subnet_ids = [aws_subnet.private_1[0].id, aws_subnet.private_2[0].id]
+
+  tags = {
+    Name = "${var.project_name}-db-subnet-group"
+  }
+}
+
+# RDS Security Group
+resource "aws_security_group" "rds" {
+  count       = var.enable_aws ? 1 : 0
+  name        = "${var.project_name}-rds-sg"
+  description = "Allow PostgreSQL from VPC"
+  vpc_id      = aws_vpc.main[0].id
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main[0].cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-rds-sg"
+  }
+}
+
+# RDS Instance
+resource "aws_db_instance" "main" {
+  count                  = var.enable_aws ? 1 : 0
+  identifier             = "${var.project_name}-db-${var.environment}"
+  engine                 = "postgres"
+  engine_version         = "15.3"
+  instance_class         = "db.t3.micro"
+  allocated_storage      = 20
+  storage_type           = "gp2"
+  db_name                = var.db_name
+  username               = var.db_username
+  password               = random_password.db_password_aws.result
+  vpc_security_group_ids = [aws_security_group.rds[0].id]
+  db_subnet_group_name   = aws_db_subnet_group.main[0].name
+  skip_final_snapshot    = true
+  publicly_accessible    = false
+
+  tags = {
+    Name = "${var.project_name}-rds"
+  }
+}
+
+# Random password for AWS RDS
+resource "random_password" "db_password_aws" {
+  length  = 16
+  special = true
+}

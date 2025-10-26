@@ -1,0 +1,50 @@
+output "gcp_cluster_name" {
+  description = "GKE cluster name"
+  value       = var.enable_gcp ? google_container_cluster.primary[0].name : null
+}
+
+output "gcp_cluster_endpoint" {
+  description = "GKE cluster endpoint"
+  value       = var.enable_gcp ? google_container_cluster.primary[0].endpoint : null
+  sensitive   = true
+}
+
+output "gcp_database_name" {
+  description = "Cloud SQL instance name"
+  value       = var.enable_gcp ? google_sql_database_instance.main[0].name : null
+}
+
+output "gcp_database_connection" {
+  description = "Cloud SQL connection string"
+  value       = var.enable_gcp ? google_sql_database_instance.main[0].connection_name : null
+}
+
+output "aws_cluster_name" {
+  description = "EKS cluster name"
+  value       = var.enable_aws ? aws_eks_cluster.main[0].name : null
+}
+
+output "aws_cluster_endpoint" {
+  description = "EKS cluster endpoint"
+  value       = var.enable_aws ? aws_eks_cluster.main[0].endpoint : null
+  sensitive   = true
+}
+
+output "aws_database_endpoint" {
+  description = "RDS endpoint"
+  value       = var.enable_aws ? aws_db_instance.main[0].endpoint : null
+}
+
+output "aws_database_name" {
+  description = "RDS database name"
+  value       = var.enable_aws ? aws_db_instance.main[0].db_name : null
+}
+
+output "deployment_summary" {
+  description = "Deployment summary"
+  value = {
+    gcp_deployed = var.enable_gcp
+    aws_deployed = var.enable_aws
+    environment  = var.environment
+  }
+}

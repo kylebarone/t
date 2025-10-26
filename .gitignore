@@ -1,0 +1,75 @@
+# -------------------------------
+# Terraform
+# -------------------------------
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Terraform variable files (keep secure)
+*.tfvars
+*.tfvars.json
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Plan output files
+*.plan
+*.tfplan
+
+# Lock file (optional to ignore for demos)
+.terraform.lock.hcl
+
+# -------------------------------
+# Editor / IDE files
+# -------------------------------
+# VS Code
+.vscode/
+
+# JetBrains IDEs (IntelliJ, PyCharm, etc.)
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -------------------------------
+# Logs and temp files
+# -------------------------------
+*.log
+*.tmp
+*.bak
+
+# -------------------------------
+# Markdown and Documentation Artifacts
+# -------------------------------
+# Ignore build outputs or previews from markdown tools
+_site/
+.mdbook/
+docs/.cache/
+docs/_build/
+docs/node_modules/
+
+# -------------------------------
+# GitHub and CI
+# -------------------------------
+# Local GitHub Actions runner logs
+.github/workflows/*.log
+.github/actions/.cache/

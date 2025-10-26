@@ -1,0 +1,98 @@
+# VPC Network
+resource "google_compute_network" "vpc" {
+  count                   = var.enable_gcp ? 1 : 0
+  name                    = "${var.project_name}-vpc-${var.environment}"
+  auto_create_subnetworks = false
+}
+
+# Subnet
+resource "google_compute_subnetwork" "subnet" {
+  count         = var.enable_gcp ? 1 : 0
+  name          = "${var.project_name}-subnet-${var.environment}"
+  ip_cidr_range = "10.1.0.0/24"
+  region        = var.gcp_region
+  network       = google_compute_network.vpc[0].id
+}
+
+# GKE Cluster
+resource "google_container_cluster" "primary" {
+  count              = var.enable_gcp ? 1 : 0
+  name               = "${var.project_name}-gke-${var.environment}"
+  location           = var.gcp_zone
+  initial_node_count = 1
+
+  remove_default_node_pool = true
+
+  network    = google_compute_network.vpc[0].name
+  subnetwork = google_compute_subnetwork.subnet[0].name
+
+  deletion_protection = false
+}
+
+# GKE Node Pool
+resource "google_container_node_pool" "primary_nodes" {
+  count      = var.enable_gcp ? 1 : 0
+  name       = "${var.project_name}-node-pool"
+  location   = var.gcp_zone
+  cluster    = google_container_cluster.primary[0].name
+  node_count = 2
+
+  node_config {
+    machine_type = "e2-medium"
+    disk_size_gb = 20
+
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+
+    labels = {
+      environment = var.environment
+      managed_by  = "terraform"
+    }
+
+    tags = ["gke-node", var.environment]
+  }
+}
+
+# Cloud SQL Instance
+resource "google_sql_database_instance" "main" {
+  count            = var.enable_gcp ? 1 : 0
+  name             = "${var.project_name}-db-${var.environment}"
+  database_version = "POSTGRES_15"
+  region           = var.gcp_region
+
+  settings {
+    tier = "db-f1-micro"
+
+    ip_configuration {
+      ipv4_enabled = true
+    }
+
+    backup_configuration {
+      enabled = true
+    }
+  }
+
+  deletion_protection = false
+}
+
+# Cloud SQL Database
+resource "google_sql_database" "database" {
+  count    = var.enable_gcp ? 1 : 0
+  name     = var.db_name
+  instance = google_sql_database_instance.main[0].name
+}
+
+# Cloud SQL User
+resource "google_sql_user" "user" {
+  count    = var.enable_gcp ? 1 : 0
+  name     = var.db_username
+  instance = google_sql_database_instance.main[0].name
+  password = random_password.db_password.result
+}
+
+# Random password for database
+resource "random_password" "db_password" {
+  length  = 16
+  special = true
+}
