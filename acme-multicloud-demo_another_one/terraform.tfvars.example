@@ -1,0 +1,101 @@
+# ACME Multi-Cloud Infrastructure Configuration
+# Copy this file to terraform.tfvars and update with your values
+
+#------------------------------------------------------------------------------
+# Project Configuration
+#------------------------------------------------------------------------------
+project_name = "acme-widget"
+environment  = "dev"
+
+#------------------------------------------------------------------------------
+# Multi-Cloud Toggle
+# Set to false to disable deployment for specific cloud provider
+#------------------------------------------------------------------------------
+enable_gcp = true
+enable_aws = true
+
+#------------------------------------------------------------------------------
+# GCP Configuration
+#------------------------------------------------------------------------------
+gcp_project = "your-gcp-project-id"  # REQUIRED: Replace with your GCP project ID
+gcp_region  = "us-central1"
+gcp_zone    = "us-central1-a"
+
+# GCP Network Configuration
+gcp_network_cidr   = "10.1.0.0/24"    # Primary subnet for nodes
+gcp_pods_cidr      = "10.1.16.0/20"   # Secondary range for pods (4,096 IPs)
+gcp_services_cidr  = "10.1.32.0/20"   # Secondary range for services (4,096 IPs)
+
+# GKE Configuration
+gke_machine_type       = "e2-medium"  # 2 vCPU, 4GB RAM
+gke_min_nodes          = 1
+gke_max_nodes          = 3
+gke_initial_node_count = 2
+
+# Cloud SQL Configuration
+cloudsql_tier      = "db-f1-micro"    # Smallest tier for dev
+cloudsql_disk_size = 10               # GB
+
+#------------------------------------------------------------------------------
+# AWS Configuration
+#------------------------------------------------------------------------------
+aws_region = "us-east-1"
+aws_availability_zones = [
+  "us-east-1a",
+  "us-east-1b"
+]
+
+# AWS Network Configuration
+aws_vpc_cidr = "10.2.0.0/16"
+aws_private_subnets = [
+  "10.2.1.0/24",  # us-east-1a
+  "10.2.2.0/24"   # us-east-1b
+]
+aws_public_subnets = [
+  "10.2.3.0/24",  # us-east-1a
+  "10.2.4.0/24"   # us-east-1b
+]
+
+# EKS Configuration
+eks_instance_type = "t3.medium"       # 2 vCPU, 4GB RAM
+eks_desired_size  = 2
+eks_min_size      = 1
+eks_max_size      = 3
+
+# RDS Configuration
+rds_instance_class     = "db.t3.micro"  # Smallest instance for dev
+rds_allocated_storage  = 20              # GB
+
+#------------------------------------------------------------------------------
+# Database Configuration (applies to both clouds)
+#------------------------------------------------------------------------------
+db_name                   = "widget"
+db_username               = "postgres"
+db_backup_retention_days  = 7
+
+#------------------------------------------------------------------------------
+# Additional Tags/Labels
+#------------------------------------------------------------------------------
+common_tags = {
+  Owner       = "infrastructure-team"
+  CostCenter  = "engineering"
+  Compliance  = "none"
+}
+
+#------------------------------------------------------------------------------
+# Notes:
+# 
+# Development Settings:
+# - Using small instance types (e2-medium, t3.medium, db-f1-micro, db.t3.micro)
+# - Single AZ for GCP (cost optimization)
+# - Multi-AZ for AWS (demo purposes)
+# 
+# For Production:
+# - Increase instance sizes based on workload requirements
+# - Set GKE location to region (not zone) for multi-zone deployment
+# - Enable Cloud SQL regional availability
+# - Enable RDS Multi-AZ
+# - Increase backup retention periods
+# - Add monitoring and alerting configurations
+# - Implement proper secret management
+#------------------------------------------------------------------------------
